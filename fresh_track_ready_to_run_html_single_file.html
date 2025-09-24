@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FreshTrack — Cut Food Waste (Lori & Barbara KPI + Six Sigma)</title>
+  <!-- Tailwind via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900">
+  <div id="root"></div>
+
+  <!-- React 18 + Babel for in-browser JSX -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useMemo, useState } = React;
+
+    function App() {
+      // --- Editable baseline assumptions ---
+      const [households, setHouseholds] = useState(10000); // active users
+      const [aov, setAov] = useState(29.95); // starter kit AOV ($)
+      const [subscription, setSubscription] = useState(7.5); // avg monthly subscription revenue ($)
+      const [cogsPct, setCogsPct] = useState(0.32); // cost of goods sold %
+      const [churn, setChurn] = useState(0.05); // monthly churn
+      const [cac, setCAC] = useState(15); // acquisition cost ($)
+      const [wasteBaseline, setWasteBaseline] = useState(0.35); // % of food wasted
+      const [wasteReduction, setWasteReduction] = useState(0.25); // reduction with FreshTrack
+
+      // --- Derived metrics ---
+      const monthlyRevenue = useMemo(() => households * subscription, [households, subscription]);
+      const starterRevenue = useMemo(() => households * aov, [households, aov]);
+      const revenue = monthlyRevenue + starterRevenue;
+
+      const cogs = useMemo(() => revenue * cogsPct, [revenue, cogsPct]);
+      const grossMargin = revenue - cogs;
+      const grossMarginPct = revenue > 0 ? grossMargin / revenue : 0;
+
+      // Very simple LTV model (subscription gross profit * months)
+      const ltv = useMemo(() => {
+        const months = churn > 0 ? 1 / churn : Infinity;
+        return subscription * months * (1 - cogsPct);
+      }, [subscription, churn, cogsPct]);
+
+      const paybackMonths = useMemo(() => {
+        if (!isFinite(ltv) || churn <= 0) return Infinity;
+        // Average monthly gross profit per user
+        const monthlyGrossProfit = subscription * (1 - cogsPct);
+        return monthlyGrossProfit > 0 ? cac / monthlyGrossProfit : Infinity;
+      }, [cac, subscription, cogsPct, ltv, churn]);
+
+      // Six Sigma DPMO: treat waste % as defect probability proxy (illustrative)
+      const effectiveWaste = wasteBaseline * (1 - wasteReduction);
+      const dpmo = effectiveWaste * 1_000_000;
+      function dpmoToSigma(d) {
+        if (d <= 3.4) return 6.0;
+        if (d <= 233) return 5.0;
+        if (d <= 6210) return 4.0;
+        if (d <= 66807) return 3.0;
+        return 2.0;
+      }
+      const sigmaLevel = dpmoToSigma(dpmo);
+
+      const pct = (v) => (v * 100).toFixed(1) + "%";
+      const money = (v) => "$" + Math.round(v).toLocaleString();
+      const num = (v) => Math.round(v).toLocaleString();
+
+      return (
+        <div className="min-h-screen">
+          {/* Header */}
+          <header className="mx-auto max-w-7xl px-6 py-10">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h1 className="text-3xl font-bold">FreshTrack — Cut Food Waste</h1>
+                <p className="mt-2 max-w-3xl text-slate-600">
+                  Capstone one‑pager: Problem → Solution → Customer Flow, tuned to <span className="font-semibold">Lori Greiner & Barbara Corcoran KPIs</span>, with a <span className="font-semibold">Six Sigma DMAIC</span> plan.
+                </p>
+              </div>
+              <a href="#cta" className="rounded-2xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold shadow-sm hover:bg-slate-100">Request Pilot</a>
+            </div>
+          </header>
+
+          {/* Problem & Solution */}
+          <section className="mx-auto max-w-7xl px-6 pb-8 grid gap-6 md:grid-cols-2">
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-semibold">Problem</h2>
+              <p className="mt-3 text-slate-700">Households waste 30–40% of food, losing ~$1,500/year and driving unnecessary emissions.</p>
+              <ul className="mt-4 list-disc pl-5 text-slate-700">
+                <li>Expiration dates poorly tracked.</li>
+                <li>No visibility on fridge/pantry contents.</li>
+                <li>Lack of timely nudges → food spoils.</li>
+              </ul>
+            </div>
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-semibold">Solution — FreshTrack</h2>
+              <ul className="mt-4 list-disc pl-5 text-slate-700">
+                <li>Smart QR labels track expiry & openings.</li>
+                <li>App alerts + recipe suggestions prevent waste.</li>
+                <li>Dashboard of fridge/pantry items.</li>
+                <li>Community share/donate before spoilage.</li>
+              </ul>
+            </div>
+          </section>
+
+          {/* Customer Flow */}
+          <section className="mx-auto max-w-7xl px-6 pb-8">
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-semibold">Customer Flow — Product to Customer</h2>
+              <ol className="mt-4 list-decimal pl-5 text-slate-700 space-y-2">
+                <li>Buy starter kit + app subscription.</li>
+                <li>Apply labels to groceries, scan into app.</li>
+                <li>Receive freshness alerts + recipe nudges.</li>
+                <li>Cook meals → reduce waste → save money.</li>
+                <li>Stay engaged → renew subscription, upsell features.</li>
+              </ol>
+            </div>
+          </section>
+
+          {/* KPIs */}
+          <section className="mx-auto max-w-7xl px-6 pb-8 grid gap-4 md:grid-cols-3">
+            <KPI label="Households" value={num(households)} note="active" />
+            <KPI label="Monthly Revenue" value={money(monthlyRevenue)} note="subscriptions" />
+            <KPI label="Starter Rev" value={money(starterRevenue)} note="one-time" />
+            <KPI label="Gross Margin %" value={pct(grossMarginPct)} note="after COGS" />
+            <KPI label="LTV" value={isFinite(ltv) ? money(ltv) : '∞'} note="gross profit/user" />
+            <KPI label="CAC" value={money(cac)} note="per household" />
+            <KPI label="Payback" value={isFinite(paybackMonths) ? paybackMonths.toFixed(1) + ' mo' : '∞'} note="recover CAC" />
+            <KPI label="Waste Reduction" value={pct(wasteReduction)} note="vs baseline" />
+            <KPI label="Sigma Level" value={`${sigmaLevel.toFixed(1)}σ`} note={`${Math.round(dpmo).toLocaleString()} DPMO`} />
+          </section>
+
+          {/* Editable Controls */}
+          <section className="mx-auto max-w-7xl px-6 pb-8">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <h3 className="text-lg font-semibold">Assumptions (tweak to see impact)</h3>
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <Control label="Active Households" value={households} onChange={setHouseholds} step={100} min={1000} max={500000} type="number" />
+                <Control label="Starter Kit AOV ($)" value={aov} onChange={setAov} step={0.5} min={5} max={99} type="number" />
+                <Control label="Subscription ($/mo)" value={subscription} onChange={setSubscription} step={0.5} min={1} max={25} type="number" />
+                <Control label="COGS %" value={Math.round(cogsPct * 100)} onChange={(v)=>setCogsPct(v/100)} step={1} min={10} max={80} type="number" suffix="%" />
+                <Control label="Churn % (mo)" value={Math.round(churn * 100)} onChange={(v)=>setChurn(v/100)} step={1} min={1} max={20} type="number" suffix="%" />
+                <Control label="CAC ($)" value={cac} onChange={setCAC} step={1} min={1} max={80} type="number" />
+                <Control label="Waste Baseline %" value={Math.round(wasteBaseline * 100)} onChange={(v)=>setWasteBaseline(v/100)} step={1} min={5} max={60} type="number" suffix="%" />
+                <Control label="Waste Reduction %" value={Math.round(wasteReduction * 100)} onChange={(v)=>setWasteReduction(v/100)} step={1} min={0} max={80} type="number" suffix="%" />
+              </div>
+            </div>
+          </section>
+
+          {/* Six Sigma DMAIC Plan */}
+          <section className="mx-auto max-w-7xl px-6 pb-8">
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-semibold">DMAIC — Six Sigma Implementation</h2>
+              <div className="mt-4 grid gap-4 md:grid-cols-5">
+                <DMAICCard title="Define" bullets={["CTQ: % food consumed","Defect: wasted food","Target: cut waste by 25%+"]} />
+                <DMAICCard title="Measure" bullets={["Track spoilage events","Baseline: 35% waste","Survey households"]} />
+                <DMAICCard title="Analyze" bullets={["Top categories wasted","Expiry vs. consumption","Behavioral gaps"]} />
+                <DMAICCard title="Improve" bullets={["Deploy smart labels","Push recipe nudges","Promote donation"]} />
+                <DMAICCard title="Control" bullets={["Monthly reports","Engagement thresholds","Community benchmarks"]} />
+              </div>
+            </div>
+          </section>
+
+          {/* CTA */}
+          <section id="cta" className="mx-auto max-w-7xl px-6 pb-16">
+            <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-lime-500 p-8 text-white shadow-lg">
+              <h2 className="text-2xl font-semibold">Pilot FreshTrack in 14 Days</h2>
+              <p className="mt-2 max-w-2xl text-white/90">Smart labels + app to cut food waste. Investor‑grade KPIs and Six Sigma metrics included.</p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <a className="rounded-2xl bg-white/10 px-5 py-2 text-sm font-semibold hover:bg-white/20" href="#">Book Demo</a>
+                <a className="rounded-2xl bg-white px-5 py-2 text-sm font-semibold text-emerald-700 hover:bg-slate-100" href="#">Start Free Trial</a>
+              </div>
+            </div>
+          </section>
+
+          {/* Footer */}
+          <footer className="mx-auto max-w-7xl px-6 pb-10 text-sm text-slate-500">
+            <p>© {new Date().getFullYear()} FreshTrack — Concept site for capstone purposes.</p>
+          </footer>
+        </div>
+      );
+    }
+
+    function KPI({ label, value, note }) {
+      return (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-sm text-slate-500">{label}</p>
+          <p className="mt-1 text-2xl font-semibold">{value}</p>
+          {note && <p className="mt-1 text-xs text-slate-500">{note}</p>}
+        </div>
+      );
+    }
+
+    function Control({ label, value, onChange, step=1, min=0, max=100, type="number", suffix="" }) {
+      return (
+        <label className="flex flex-col gap-1 rounded-xl bg-white p-3 shadow-sm">
+          <span className="text-sm text-slate-600">{label}</span>
+          <input
+            className="rounded-xl border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            type={type}
+            value={value}
+            min={min}
+            max={max}
+            step={step}
+            onChange={(e) => onChange(type === 'number' ? Number(e.target.value) : e.target.value)}
+          />
+          {suffix && <span className="text-xs text-slate-400">{suffix}</span>}
+        </label>
+      );
+    }
+
+    function DMAICCard({ title, bullets }) {
+      return (
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <h3 className="text-base font-semibold">{title}</h3>
+          <ul className="mt-2 list-disc pl-5 text-sm text-slate-700">
+            {bullets.map((b, i) => (
+              <li key={i}>{b}</li>
+            ))}
+          </ul>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
